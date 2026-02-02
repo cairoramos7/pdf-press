@@ -52,9 +52,24 @@ class PdfPressApp(ctk.CTk, TkinterDnD.DnDWrapper):
         self.label_icon.bind("<Button-1>", lambda e: self.select_file())
         self.main_frame.bind("<Button-1>", lambda e: self.select_file())
 
-        # Botão de Ação (Inicialmente Desabilitado)
-        self.btn_compress = ctk.CTkButton(self, text="Comprimir PDF", command=self.start_compression, state="disabled", height=50, font=("Arial", 16, "bold"))
-        self.btn_compress.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="ew")
+        # Botão de Ação (Inicialmente Desabilitado) e Seletor de Qualidade
+        self.settings_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.settings_frame.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="ew")
+        self.settings_frame.grid_columnconfigure(0, weight=1)
+        self.settings_frame.grid_columnconfigure(1, weight=1)
+
+        # Dropdown de Qualidade
+        self.compression_level = ctk.StringVar(value="Balanceado (180 dpi)")
+        self.combo_quality = ctk.CTkComboBox(self.settings_frame, 
+                                             values=["Tela (72 dpi)", "Ebook (150 dpi)", "Balanceado (180 dpi)", "Impressão (300 dpi)"],
+                                             variable=self.compression_level,
+                                             state="readonly",
+                                             width=150)
+        self.combo_quality.grid(row=0, column=0, padx=(0, 10), sticky="ew")
+
+        # Botão Comprimir
+        self.btn_compress = ctk.CTkButton(self.settings_frame, text="Comprimir PDF", command=self.start_compression, state="disabled", height=32, font=("Arial", 14, "bold"))
+        self.btn_compress.grid(row=0, column=1, padx=(10, 0), sticky="ew")
 
         # Barra de Status
         self.status_label = ctk.CTkLabel(self, text="Pronto", font=("Arial", 12), text_color="gray")
@@ -136,7 +151,18 @@ class PdfPressApp(ctk.CTk, TkinterDnD.DnDWrapper):
             name, ext = os.path.splitext(filename)
             output_file = os.path.join(directory, f"{name}_compressed{ext}")
 
-            # Comando fornecido pelo usuário
+            # Determinar resolução baseada na seleção
+            selection = self.compression_level.get()
+            dpi = "180" # Padrão Balanceado
+            
+            if "72 dpi" in selection:
+                dpi = "72"
+            elif "150 dpi" in selection:
+                dpi = "150"
+            elif "300 dpi" in selection:
+                dpi = "300"
+            
+            # Comando fornecido pelo usuário (adaptado para DPI dinâmico)
             # gswin64c -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 ...
             
             cmd = [
@@ -146,9 +172,9 @@ class PdfPressApp(ctk.CTk, TkinterDnD.DnDWrapper):
                 "-dDetectDuplicateImages=true",
                 "-dCompressFonts=true",
                 "-dDownsampleColorImages=true",
-                "-dColorImageResolution=180",
+                f"-dColorImageResolution={dpi}",
                 "-dDownsampleGrayImages=true",
-                "-dGrayImageResolution=180",
+                f"-dGrayImageResolution={dpi}",
                 "-dDownsampleMonoImages=false",
                 "-dNOPAUSE",
                 "-dBATCH",
